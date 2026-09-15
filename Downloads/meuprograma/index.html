@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checklist de Abertura de Unidade</title>
+
+<!-- Suporte PWA e App Instalável -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1B2A2E">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2A2E;
+    --paper:#EEF1EC;
+    --surface:#FFFFFF;
+    --line:#D9DBD3;
+    --muted:#6B7570;
+    --amber:#C4832E;
+    --amber-bg:#FBF0DF;
+    --green:#3F7859;
+    --green-bg:#E4EFE8;
+    --red:#B14A3D;
+    --red-bg:#F6E5E2;
+    --blue:#3E6E8E;
+    --blue-bg:#E4EDF1;
+    --grey-bg:#EEEEEA;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Inter',sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    padding-bottom:110px;
+  }
+  h1,h2{font-family:'Zilla Slab',serif;margin:0;}
+
+  /* Top bar */
+  .topbar{
+    background:var(--ink);
+    color:var(--paper);
+    padding:22px 18px 26px;
+    position:relative;
+  }
+  .topbar h1{font-size:1.5rem;font-weight:700;letter-spacing:.2px;}
+  .topbar .sub{font-size:.85rem;color:#B9C3BE;margin-top:2px;}
+  .unit-row{margin-top:16px;}
+  .unit-row input{
+    width:100%;
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.25);
+    color:#fff;
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:.95rem;
+    font-family:inherit;
+  }
+  .unit-row input::placeholder{color:#9AA6A1;}
+  .progress-wrap{margin-top:18px;}
+  .progress-labels{
+    display:flex;justify-content:space-between;
+    font-size:.82rem;color:#C7D0CB;margin-bottom:6px;
+  }
+  .progress-labels b{color:#fff;font-size:1rem;}
+  .progress-track{
+    height:8px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;background:linear-gradient(90deg,#C4832E,#3F7859);
+    border-radius:99px;transition:width .4s ease;
+  }
+  .stat-chips{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .chip{
+    font-size:.78rem;padding:4px 10px;border-radius:99px;
+    background:rgba(255,255,255,.1);color:#DCE4E0;
+    border:1px solid rgba(255,255,255,.18);
+  }
+
+  /* Category */
+  .category{
+    margin:16px 14px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+  }
+  .category-header{
+    display:flex;align-items:center;gap:10px;
+    padding:14px 16px;
+    cursor:pointer;
+    user-select:none;
+    background:var(--surface);
+  }
+  .category-header svg{flex:0 0 auto;width:20px;height:20px;color:var(--muted);}
+  .category-header h2{font-size:1.02rem;font-weight:600;flex:1;}
+  .category-count{
+    font-size:.78rem;font-family:'Inter';color:var(--muted);
+    background:var(--grey-bg);padding:3px 9px;border-radius:99px;
+    font-variant-numeric:tabular-nums;
+  }
+  .category-count.done{color:var(--green);background:var(--green-bg);}
+  .chevron{transition:transform .2s ease;color:var(--muted);width:16px;height:16px;}
+  .category.collapsed .chevron{transform:rotate(-90deg);}
+  .category-items{
+    border-top:1px solid var(--line);
+  }
+  .category.collapsed .category-items{display:none;}
+
+  /* Item */
+  .item{
+    padding:12px 16px;
+    border-bottom:1px solid var(--line);
+    border-left:3px solid transparent;
+  }
+  .item:last-child{border-bottom:none;}
+  .item[data-status="concluido"]{border-left-color:var(--green);}
+  .item[data-status="pendente"]{border-left-color:var(--amber);}
+  .item[data-status="naoconforme"]{border-left-color:var(--red);}
+  .item[data-status="andamento"]{border-left-color:var(--blue);}
+
+  .item-top{display:flex;align-items:flex-start;gap:10px;}
+  .item-id{
+    font-size:.75rem;color:var(--muted);font-weight:600;
+    padding-top:9px;width:20px;flex:0 0 auto;font-variant-numeric:tabular-nums;
+  }
+  .item-name{flex:1;font-size:.92rem;padding-top:8px;line-height:1.35;}
+  .item-status{
+    flex:0 0 auto;
+    font-size:.82rem;
+    font-family:inherit;
+    border-radius:8px;
+    padding:7px 8px;
+    border:1px solid var(--line);
+    background:var(--grey-bg);
+    color:var(--ink);
+    max-width:150px;
+  }
+  .item[data-status="concluido"] .item-status{background:var(--green-bg);border-color:#BFDACB;color:var(--green);}
+  .item[data-status="pendente"] .item-status{background:var(--amber-bg);border-color:#EAD1A4;color:var(--amber);}
+  .item[data-status="naoconforme"] .item-status{background:var(--red-bg);border-color:#E7BEB6;color:var(--red);}
+  .item[data-status="andamento"] .item-status{background:var(--blue-bg);border-color:#BBD2DE;color:var(--blue);}
+
+  .item-details{
+    margin:10px 0 2px 30px;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:7px;
+  }
+  .item-details input{
+    font-family:inherit;font-size:.85rem;
+    padding:8px 10px;border:1px solid var(--line);border-radius:7px;
+    background:#FAFAF7;color:var(--ink);
+    width:100%;
+  }
+  .item-details input::placeholder{color:#9A9F97;}
+
+  /* Bottom bar */
+  .bottombar{
+    position:fixed;bottom:0;left:0;right:0;
+    background:var(--surface);
+    border-top:1px solid var(--line);
+    padding:12px 16px;
+    display:flex;gap:10px;align-items:center;
+    box-shadow:0 -4px 16px rgba(0,0,0,.06);
+  }
+  .save-indicator{font-size:.72rem;color:var(--muted);flex:0 0 auto;min-width:64px;}
+  .btn-report{
+    flex:1;
+    background:var(--ink);color:#fff;border:none;
+    padding:13px 16px;border-radius:99px;
+    font-family:'Inter';font-weight:600;font-size:.92rem;
+    cursor:pointer;
+  }
+  .btn-report:active{opacity:.85;}
+  .btn-icon{
+    flex:0 0 auto;
+    background:var(--grey-bg);color:var(--ink);border:1px solid var(--line);
+    width:46px;height:46px;border-radius:99px;
+    font-size:1.15rem;cursor:pointer;
+  }
+  .btn-icon:active{opacity:.8;}
+
+  /* Modal */
+  .overlay{
+    position:fixed;inset:0;background:rgba(27,42,46,.55);
+    display:none;align-items:flex-end;justify-content:center;z-index:50;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:var(--surface);width:100%;max-width:560px;
+    border-radius:16px 16px 0 0;
+    max-height:88vh;display:flex;flex-direction:column;
+    animation:slideup .25s ease;
+  }
+  @keyframes slideup{from{transform:translateY(24px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal-head{
+    padding:16px 18px 10px;display:flex;justify-content:space-between;align-items:center;
+    border-bottom:1px solid var(--line);
+  }
+  .modal-head h2{font-size:1.1rem;}
+  .modal-close{background:none;border:none;font-size:1.3rem;color:var(--muted);cursor:pointer;line-height:1;padding:4px;}
+  .modal-body{padding:14px 18px;overflow-y:auto;}
+  .report-text{
+    width:100%;min-height:260px;font-family:'Inter';font-size:.83rem;line-height:1.5;
+    padding:12px;border:1px solid var(--line);border-radius:8px;background:#FAFAF7;
+    resize:vertical;white-space:pre-wrap;color:var(--ink);margin-top:10px;
+  }
+  .toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.85rem;color:var(--ink);}
+  .modal-actions{
+    padding:12px 18px 18px;display:flex;gap:10px;border-top:1px solid var(--line);
+  }
+  .btn-secondary,.btn-primary{
+    flex:1;padding:12px;border-radius:9px;font-family:'Inter';font-weight:600;font-size:.88rem;
+    border:none;cursor:pointer;
+  }
+  .btn-secondary{background:var(--grey-bg);color:var(--ink);}
+  .btn-primary{background:var(--green);color:#fff;}
+  .copied-toast{
+    position:fixed;bottom:120px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:#fff;padding:8px 16px;border-radius:99px;
+    font-size:.82rem;opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:60;
+  }
+  .copied-toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Checklist de Abertura</h1>
+  <div class="sub">Acompanhamento e controle de prontidão</div>
+  <div class="unit-row">
+    <input id="unitName" placeholder="Nome da unidade">
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-labels">
+      <span id="progressText">0 de 28 em conformidade</span>
+      <b id="progressPct">0%</b>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+  <div class="stat-chips">
+    <span class="chip" id="chipPendente">⚠️ 0 pendentes</span>
+    <span class="chip" id="chipNaoConforme">❌ 0 não conformes</span>
+    <span class="chip" id="chipAndamento">🔄 0 em andamento</span>
+  </div>
+</div>
+
+<div id="categories"></div>
+
+<div class="bottombar">
+  <span class="save-indicator" id="saveIndicator">Salvo</span>
+  <button class="btn-icon" id="openTransfer" title="Exportar / importar dados">⇄</button>
+  <button class="btn-report" id="openReport">Gerar relatório</button>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Relatório da verificação</h2>
+      <button class="modal-close" id="closeModal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="toggle-row">
+        <input type="checkbox" id="fullToggle" style="width:16px;height:16px;">
+        <label for="fullToggle" style="margin:0;">Incluir lista completa dos 28 itens (não só pendências)</label>
+      </div>
+      <textarea class="report-text" id="reportText" readonly></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="copyBtn">Copiar texto</button>
+      <button class="btn-primary" id="sendWa">Enviar no WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlayTransfer">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Exportar / importar dados</h2>
+      <button class="modal-close" id="closeTransfer">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.85rem;color:var(--muted);margin:0 0 4px;">
+        Use isso para continuar o preenchimento em outro celular, navegador ou depois de limpar os dados do site. Copie o código abaixo e guarde (ex.: em uma nota); depois cole no campo "Importar" no outro aparelho.
+      </p>
+      <label for="exportText" style="font-size:.8rem;color:var(--muted);display:block;margin:10px 0 5px;">Código de exportação (copie este texto)</label>
+      <textarea class="report-text" id="exportText" readonly style="min-height:120px;"></textarea>
+      <div class="modal-actions" style="padding:10px 0 0;border-top:none;">
+        <button class="btn-secondary" id="copyExport">Copiar código</button>
+      </div>
+      <label for="importText" style="font-size:.8rem;color:var(--muted);display:block;margin:16px 0 5px;">Importar (cole aqui o código de outro aparelho)</label>
+      <textarea class="report-text" id="importText" style="min-height:120px;" placeholder="Cole aqui o código exportado..."></textarea>
+      <div class="modal-actions" style="padding:10px 0 0;border-top:none;">
+        <button class="btn-primary" id="doImport">Importar e substituir dados atuais</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="copied-toast" id="toast">Copiado</div>
+
+<script>
+const STATUS = {
+  naoverificado: {label:'⬜ Não verificado'},
+  andamento:     {label:'🔄 Em andamento'},
+  pendente:      {label:'⚠️ Pendente'},
+  naoconforme:   {label:'❌ Não conforme'},
+  concluido:     {label:'✅ Concluído'},
+};
+const STATUS_ORDER = ['naoverificado','andamento','pendente','naoconforme','concluido'];
+
+const ICONS = {
+  prestadores:  '<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>',
+  tecnicas:     '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.36.4.66.74.85.34.19.53.24.86.24H21a2 2 0 1 1 0 4h-.09c-.33 0-.52.05-.86.24-.34.19-.6.49-.74.85Z"/>',
+  equipamentos: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/>',
+  seguranca:    '<path d="M12 2 4 5v6c0 5 3.4 9 8 11 4.6-2 8-6 8-11V5l-8-3Z"/>',
+  limpeza:      '<path d="M15 11 5 21l-2-2 10-10Z"/><path d="M14 4c1.5 1.5 1.5 4 0 5.5L9.5 14 6 10.5 10.5 6C12 4.5 14 4 14 4Z"/>',
+  manutencao:   '<path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 1 5.4-5.4l-3.1 3.1-2.3-2.3 3.1-3.1Z"/>',
+  documentacao: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/>',
+};
+
+const DATA = [
+ {id:'prestadores', name:'Prestadores de Serviço', icon:'prestadores', items:[
+  ['01','Controlador de acesso Externo — Efetivo GR'],
+  ['02','Controlador de acesso Interno — Efetivo GR'],
+  ['03','Vigilante — Efetivo GR'],
+  ['04','Limpeza 1 — Efetivo Verzani & Sandrini'],
+  ['05','Limpeza 2 — Efetivo Verzani & Sandrini'],
+  ['06','Manutenção — Efetivo Alamo'],
+  ['07','Jardinagem — Efetivo / Serv-San'],
+  ['08','Confirmar escala e horários dos prestadores'],
+  ['09','Validar uniformes e EPIs'],
+ ]},
+ {id:'tecnicas', name:'Áreas Técnicas', icon:'tecnicas', items:[
+  ['10','Bombas dos reservatórios de água potável'],
+  ['11','Bombas de incêndio'],
+  ['12','Bombas de esgoto'],
+  ['13','Sistema de hidrantes'],
+  ['14','Reservatórios de água potável'],
+  ['15','Verificar registros, válvulas e possíveis vazamentos'],
+  ['16','Iluminação interna'],
+  ['17','Iluminação externa'],
+  ['18','Quadros elétricos'],
+  ['19','Verificar funcionamento das áreas comuns e técnicas'],
+ ]},
+ {id:'equipamentos', name:'Equipamentos e Sistemas', icon:'equipamentos', items:[
+  ['20','Central de alarme'],
+  ['21','CFTV'],
+  ['22','Cancela de entrada Carros'],
+  ['23','Sistema de monitoramento'],
+  ['24','Gerador'],
+  ['25','Ar-condicionado'],
+  ['26','Luvas isolantes'],
+  ['27','Tapetes isolantes'],
+  ['28','Verificar equipamentos críticos'],
+ ]},
+];
+
+let state = { unitName:'', collapsed:{}, items:{} };
+DATA.forEach(cat=>cat.items.forEach(it=>{
+  const [id,name,status,obs] = it;
+  state.items[id] = {status: status||'naoverificado', obs: obs||''};
+}));
+
+const STORAGE_KEY = 'checklist-abertura-v1';
+let saveTimer=null;
+
+function loadState(){
+  try{
+    const savedRaw = localStorage.getItem(STORAGE_KEY);
+    if(savedRaw){
+      const saved = JSON.parse(savedRaw);
+      state = Object.assign(state, saved, {items: Object.assign({}, state.items, saved.items||{})});
+    }
+  }catch(e){ console.warn('Não foi possível carregar os dados salvos:', e); }
+  render();
+}
+
+function scheduleSave(){
+  const ind = document.getElementById('saveIndicator');
+  ind.textContent = 'Salvando…';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      ind.textContent = 'Salvo';
+    }catch(e){
+      ind.textContent = 'Erro ao salvar';
+    }
+  }, 500);
+}
+
+function iconSvg(name){
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
+}
+function chevron(){
+  return `<svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`;
+}
+
+function render(){
+  document.getElementById('unitName').value = state.unitName;
+  const root = document.getElementById('categories');
+  root.innerHTML = '';
+  DATA.forEach(cat=>{
+    const total = cat.items.length;
+    const done = cat.items.filter(it=>state.items[it[0]].status==='concluido').length;
+    const collapsed = !!state.collapsed[cat.id];
+    const section = document.createElement('section');
+    section.className = 'category' + (collapsed?' collapsed':'');
+    section.innerHTML = `
+      <div class="category-header" data-cat="${cat.id}">
+        ${iconSvg(cat.icon)}
+        <h2>${cat.name}</h2>
+        <span class="category-count ${done===total?'done':''}">${done}/${total}</span>
+        ${chevron()}
+      </div>
+      <div class="category-items"></div>
+    `;
+    const itemsWrap = section.querySelector('.category-items');
+    cat.items.forEach(it=>{
+      const id = it[0], name = it[1];
+      const s = state.items[id];
+      const row = document.createElement('div');
+      row.className = 'item';
+      row.dataset.status = s.status;
+      const showDetails = s.status !== 'naoverificado';
+      row.innerHTML = `
+        <div class="item-top">
+          <span class="item-id">${id}</span>
+          <span class="item-name">${name}</span>
+          <select class="item-status" data-id="${id}">
+            ${STATUS_ORDER.map(k=>`<option value="${k}" ${k===s.status?'selected':''}>${STATUS[k].label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="item-details" style="display:${showDetails?'grid':'none'}">
+          <input type="text" placeholder="Observação / pendência" data-field="obs" data-id="${id}" value="${escapeAttr(s.obs)}">
+        </div>
+      `;
+      itemsWrap.appendChild(row);
+    });
+    root.appendChild(section);
+  });
+  updateHeader();
+  attachHandlers();
+}
+
+function escapeAttr(str){
+  return (str||'').replace(/"/g,'&quot;');
+}
+
+function updateHeader(){
+  const all = Object.values(state.items);
+  const total = all.length;
+  const done = all.filter(i=>i.status==='concluido').length;
+  const pendente = all.filter(i=>i.status==='pendente').length;
+  const naoconforme = all.filter(i=>i.status==='naoconforme').length;
+  const andamento = all.filter(i=>i.status==='andamento').length;
+  const pct = total? Math.round(done/total*100) : 0;
+  document.getElementById('progressText').textContent = `${done} de ${total} em conformidade`;
+  document.getElementById('progressPct').textContent = `${pct}%`;
+  document.getElementById('progressFill').style.width = pct+'%';
+  document.getElementById('chipPendente').textContent = `⚠️ ${pendente} pendentes`;
+  document.getElementById('chipNaoConforme').textContent = `❌ ${naoconforme} não conformes`;
+  document.getElementById('chipAndamento').textContent = `🔄 ${andamento} em andamento`;
+}
+
+function attachHandlers(){
+  document.querySelectorAll('.category-header').forEach(h=>{
+    h.onclick = ()=>{
+      const id = h.dataset.cat;
+      state.collapsed[id] = !state.collapsed[id];
+      render();
+      scheduleSave();
+    };
+  });
+  document.querySelectorAll('.item-status').forEach(sel=>{
+    sel.onchange = (e)=>{
+      const id = e.target.dataset.id;
+      state.items[id].status = e.target.value;
+      render();
+      scheduleSave();
+    };
+    sel.onclick = (e)=>e.stopPropagation();
+  });
+  document.querySelectorAll('.item-details input').forEach(inp=>{
+    inp.oninput = (e)=>{
+      const id = e.target.dataset.id, field = e.target.dataset.field;
+      state.items[id][field] = e.target.value;
+      scheduleSave();
+    };
+  });
+}
+
+document.getElementById('unitName').oninput = (e)=>{
+  state.unitName = e.target.value;
+  scheduleSave();
+};
+
+// Relatório
+function buildReport(full){
+  const all = state.items;
+  const total = Object.keys(all).length;
+  const done = Object.values(all).filter(i=>i.status==='concluido').length;
+  const pct = total? Math.round(done/total*100) : 0;
+  const today = new Date().toLocaleDateString('pt-BR');
+  const unit = state.unitName?.trim() || 'unidade não informada';
+
+  let lines = [];
+  lines.push(`*CHECKLIST DE ABERTURA — ${unit.toUpperCase()}*`);
+  lines.push(`Data: ${today}`);
+  lines.push(`Prontidão: ${done}/${total} itens em comformidade (${pct}%)`);
+  lines.push('');
+
+  DATA.forEach(cat=>{
+    const catDone = cat.items.filter(it=>all[it[0]].status==='concluido').length;
+    lines.push(`*${cat.name}* — ${catDone}/${cat.items.length}`);
+    cat.items.forEach(it=>{
+      const id=it[0], name=it[1], s=all[id];
+      const isIssue = s.status==='pendente' || s.status==='naoconforme' || s.status==='andamento';
+      if(full || isIssue){
+        let line = `${STATUS[s.status].label} ${id} — ${name}`;
+        if(s.obs) line += `\n   Obs: ${s.obs}`;
+        lines.push(line);
+      }
+    });
+    lines.push('');
+  });
+
+  const pendCount = Object.values(all).filter(i=>i.status==='pendente'||i.status==='naoconforme').length;
+  if(pendCount===0 && !full){
+    lines.push('Nenhuma pendência ou não conformidade registrada até o momento.');
+  }
+  return lines.join('\n').trim();
+}
+
+function refreshReport(){
+  const full = document.getElementById('fullToggle').checked;
+  document.getElementById('reportText').value = buildReport(full);
+}
+
+document.getElementById('openReport').onclick = ()=>{
+  refreshReport();
+  document.getElementById('overlay').classList.add('open');
+};
+document.getElementById('closeModal').onclick = ()=>{
+  document.getElementById('overlay').classList.remove('open');
+};
+document.getElementById('overlay').onclick = (e)=>{
+  if(e.target.id==='overlay') document.getElementById('overlay').classList.remove('open');
+};
+document.getElementById('fullToggle').onchange = refreshReport;
+
+document.getElementById('copyBtn').onclick = async ()=>{
+  const text = document.getElementById('reportText').value;
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch(e){
+    const ta = document.getElementById('reportText');
+    ta.select();
+    document.execCommand('copy');
+  }
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'), 1400);
+};
+
+function isMobileDevice(){
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+document.getElementById('sendWa').onclick = ()=>{
+  const text = document.getElementById('reportText').value;
+  const encoded = encodeURIComponent(text);
+
+  if(isMobileDevice()){
+    const appUrl = `whatsapp://send?text=${encoded}`;
+    const fallbackUrl = `https://wa.me/?text=${encoded}`;
+
+    let fellBack = false;
+    const fallbackTimer = setTimeout(()=>{
+      if(!document.hidden && !fellBack){
+        fellBack = true;
+        window.location.href = fallbackUrl;
+      }
+    }, 1200);
+
+    window.addEventListener('blur', function onBlur(){
+      clearTimeout(fallbackTimer);
+      window.removeEventListener('blur', onBlur);
+    });
+
+    window.location.href = appUrl;
+  } else {
+    const url = `https://web.whatsapp.com/send?text=${encoded}`;
+    window.open(url, '_blank');
+  }
+};
+
+// Exportar / importar
+document.getElementById('openTransfer').onclick = ()=>{
+  document.getElementById('exportText').value = JSON.stringify(state);
+  document.getElementById('importText').value = '';
+  document.getElementById('overlayTransfer').classList.add('open');
+};
+document.getElementById('closeTransfer').onclick = ()=>{
+  document.getElementById('overlayTransfer').classList.remove('open');
+};
+document.getElementById('overlayTransfer').onclick = (e)=>{
+  if(e.target.id==='overlayTransfer') document.getElementById('overlayTransfer').classList.remove('open');
+};
+document.getElementById('copyExport').onclick = async ()=>{
+  const text = document.getElementById('exportText').value;
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch(e){
+    const ta = document.getElementById('exportText');
+    ta.select();
+    document.execCommand('copy');
+  }
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'), 1400);
+};
+document.getElementById('doImport').onclick = ()=>{
+  const raw = document.getElementById('importText').value.trim();
+  if(!raw){
+    alert('Cole o código de exportação antes de importar.');
+    return;
+  }
+  let parsed;
+  try{
+    parsed = JSON.parse(raw);
+  }catch(e){
+    alert('Código inválido. Verifique se colou o texto completo, exatamente como copiado.');
+    return;
+  }
+  if(!parsed.items){
+    alert('Código inválido: não parece ser um código deste checklist.');
+    return;
+  }
+  const ok = confirm('Isso vai substituir todos os dados preenchidos neste aparelho pelos dados importados. Continuar?');
+  if(!ok) return;
+  state = Object.assign({unitName:'', collapsed:{}, items:state.items}, parsed);
+  render();
+  scheduleSave();
+  document.getElementById('overlayTransfer').classList.remove('open');
+};
+
+loadState();
+</script>
+</body>
+</html>
